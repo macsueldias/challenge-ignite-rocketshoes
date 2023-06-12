@@ -2,6 +2,7 @@ import { createContext, ReactNode, useContext, useState } from 'react';
 import { toast } from 'react-toastify';
 import { api } from '../services/api';
 import { Product, Stock } from '../types';
+import { useQuery } from 'react-query';
 
 interface CartProviderProps {
   children: ReactNode;
@@ -14,6 +15,7 @@ interface UpdateProductAmount {
 
 interface CartContextData {
   cart: Product[];
+  products: Product[];
   addProduct: (productId: number) => Promise<void>;
   removeProduct: (productId: number) => void;
   updateProductAmount: ({ productId, amount }: UpdateProductAmount) => void;
@@ -22,27 +24,42 @@ interface CartContextData {
 const CartContext = createContext<CartContextData>({} as CartContextData);
 
 export function CartProvider({ children }: CartProviderProps): JSX.Element {
+  const [products, setProducts] = useState<Product[]>([])
+
+  const { isLoading, error, refetch } = useQuery(
+    'products',
+      async () => {
+        const response = await api.get('/products')
+
+        const data = await response.data
+        setProducts(data)
+      },
+    )
+      
   const [cart, setCart] = useState<Product[]>(() => {
-    // const storagedCart = Buscar dados do localStorage
+    const storagedCart = localStorage.getItem('@RocketShoes:cart')
 
-    // if (storagedCart) {
-    //   return JSON.parse(storagedCart);
-    // }
-
+    if (storagedCart) {
+      return JSON.parse(storagedCart)
+    }
+    
+    // console.log(storagedCart)
     return [];
   });
 
   const addProduct = async (productId: number) => {
     try {
-      // TODO
+      const product = products.filter(product => product.id === productId)[0]
+      setCart((state) => [...state, product])
     } catch {
-      // TODO
+      console.log("Erro ao adicionar o produto no carrinho, favor entrar em contato com o suporte!")
     }
   };
 
   const removeProduct = (productId: number) => {
     try {
-      // TODO
+      const products = cart.find((product) => product.id !== productId)
+      console.log(products)
     } catch {
       // TODO
     }
@@ -61,7 +78,7 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
 
   return (
     <CartContext.Provider
-      value={{ cart, addProduct, removeProduct, updateProductAmount }}
+      value={{ cart, addProduct, removeProduct, updateProductAmount, products }}
     >
       {children}
     </CartContext.Provider>
